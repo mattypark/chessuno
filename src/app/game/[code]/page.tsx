@@ -1,6 +1,8 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Board } from "@/components/Board";
@@ -13,10 +15,18 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   const { code } = use(params);
   const roomCode = code.toUpperCase();
 
-  const [token, setToken] = useState("");
+  const searchParams = useSearchParams();
+  const profile = searchParams.get("as") ?? "";
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setToken(getPlayerToken()), []);
+  // The token lives in localStorage, so it does not exist during SSR. Reading it
+  // through an external store keeps the server snapshot empty without bouncing
+  // state through an effect.
+  const token = useSyncExternalStore(
+    useCallback(() => () => {}, []),
+    useCallback(() => getPlayerToken(profile), [profile]),
+    () => "",
+  );
 
   const game = useQuery(api.games.get, token ? { code: roomCode, playerToken: token } : "skip");
   const join = useMutation(api.games.join);
@@ -158,9 +168,9 @@ function Shell({ code, children }: { code: string; children: React.ReactNode }) 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 p-4 sm:p-6">
       <header className="flex items-baseline gap-4">
-        <a href="/" className="font-mono text-2xl font-bold">
+        <Link href="/" className="font-mono text-2xl font-bold">
           chess<span className="text-uno-yellow">uno</span>
-        </a>
+        </Link>
         <span className="font-mono tracking-[0.35em] text-chalk">{code}</span>
       </header>
       {children}
