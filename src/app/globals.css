@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
+/*
+ * chessuno is a card table with a chess board on it, so the palette starts from
+ * felt and wood rather than from a neutral UI grey. The four Uno colours are the
+ * only saturated things on screen — everything else stays out of their way.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --felt: #10321f;
+  --felt-deep: #0a2216;
+  --rail: #4a2f1c;
+  --cream: #f3ead8;
+  --ink: #12100c;
+  --chalk: #cbbfa4;
+
+  --square-light: #efe2c6;
+  --square-dark: #86643f;
+  --square-move: #d8b23f;
+
+  --uno-red: #d0202c;
+  --uno-yellow: #edb208;
+  --uno-green: #1e9b4c;
+  --uno-blue: #1160c4;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-felt: var(--felt);
+  --color-felt-deep: var(--felt-deep);
+  --color-rail: var(--rail);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-chalk: var(--chalk);
+  --color-square-light: var(--square-light);
+  --color-square-dark: var(--square-dark);
+  --color-square-move: var(--square-move);
+  --color-uno-red: var(--uno-red);
+  --color-uno-yellow: var(--uno-yellow);
+  --color-uno-green: var(--uno-green);
+  --color-uno-blue: var(--uno-blue);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--felt) 88%, white), var(--felt-deep) 72%);
+  color: var(--cream);
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
