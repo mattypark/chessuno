@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CardFace } from "./CardFace";
-import { isLegalPlay } from "@/lib/rules/cards";
 import { CARD_COLORS } from "@/lib/rules/deck";
 import type { Card, CardColor } from "@/lib/rules/types";
 
@@ -16,13 +15,13 @@ const SWATCH: Record<CardColor, string> = {
 
 export interface HandProps {
   hand: Card[];
-  discardTop: Card;
-  activeColor: CardColor;
-  canPlay: boolean;
+  /** Decided by the server — Uno legality plus the chess restrictions. */
+  playableCardIds: string[];
   onPlay: (cardId: string, declaredColor?: CardColor) => void;
 }
 
-export function Hand({ hand, discardTop, activeColor, canPlay, onPlay }: HandProps) {
+export function Hand({ hand, playableCardIds, onPlay }: HandProps) {
+  const playableSet = new Set(playableCardIds);
   const [pendingWild, setPendingWild] = useState<string | null>(null);
 
   function choose(card: Card) {
@@ -69,7 +68,7 @@ export function Hand({ hand, discardTop, activeColor, canPlay, onPlay }: HandPro
 
       <div className="flex gap-2 overflow-x-auto pb-2">
         {hand.map((card) => {
-          const playable = canPlay && isLegalPlay(card, discardTop, activeColor);
+          const playable = playableSet.has(card.id);
           return (
             <CardFace
               key={card.id}

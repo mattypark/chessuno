@@ -9,7 +9,7 @@ import { Board } from "@/components/Board";
 import { CardBack, CardFace } from "@/components/CardFace";
 import { Hand } from "@/components/Hand";
 import { getPlayerToken } from "@/lib/playerToken";
-import type { Army, CardColor } from "@/lib/rules/types";
+import type { Army } from "@/lib/rules/types";
 
 export default function GamePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -107,9 +107,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
 
           <Hand
             hand={game.hand}
-            discardTop={game.discardTop}
-            activeColor={game.activeColor as CardColor}
-            canPlay={canPlayCard}
+            playableCardIds={game.playableCardIds}
             onPlay={(cardId, declaredColor) =>
               send({ type: "PLAY_CARD", cardId, declaredColor })
             }

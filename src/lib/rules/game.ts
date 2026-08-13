@@ -1,10 +1,4 @@
-import {
-  describeCard,
-  hasLegalPlay,
-  isLegalPlay,
-  isWild,
-  moveBudget,
-} from "./cards";
+import { describeCard, isLegalPlay, isWild, moveBudget } from "./cards";
 import { STARTING_HAND_SIZE, buildDeck, drawCards } from "./deck";
 import {
   STARTING_FEN,
@@ -86,14 +80,26 @@ function beginTurn(state: GameState): GameState {
     drewThisTurn: false,
   };
 
+  const incoming = next.turnSeat;
+  const incomingInCheck = positionStatus(
+    forceSideToMove(next.fen, next.ownership[incoming]),
+  ).inCheck;
+
   if (next.pendingSkip) {
-    const skipped = next.turnSeat;
-    next = {
-      ...next,
-      pendingSkip: false,
-      turnSeat: opponentOf(skipped),
-      log: log(next, skipped, `${seatName(skipped)} is skipped.`),
-    };
+    // Check outranks Skip. Skipping a player who owes a check answer would hand
+    // the turn back to the checker with the enemy king still hanging.
+    next = incomingInCheck
+      ? {
+          ...next,
+          pendingSkip: false,
+          log: log(next, incoming, `${seatName(incoming)} is in check and cannot be skipped.`),
+        }
+      : {
+          ...next,
+          pendingSkip: false,
+          turnSeat: opponentOf(incoming),
+          log: log(next, incoming, `${seatName(incoming)} is skipped.`),
+        };
   }
 
   next = { ...next, fen: forceSideToMove(next.fen, next.ownership[next.turnSeat]) };
@@ -107,6 +113,35 @@ function beginTurn(state: GameState): GameState {
   }
   if (status.drawn) {
     return finish(next, null, "draw");
+  }
+
+  return status.inCheck ? ensureCheckCanBeAnswered(next) : next;
+}
+
+/**
+ * A player in check must be able to act, because a turn that passes with the
+ * check unanswered leaves the king capturable on the opponent's next move.
+ *
+ * Cards can otherwise leave you helpless — hold nothing playable and your turn
+ * ends having moved nothing at all. So in check you draw until something is
+ * playable. If the deck and the discard cannot supply it, the check is
+ * unanswerable, which is what checkmate means here.
+ */
+function ensureCheckCanBeAnswered(state: GameState): GameState {
+  let next = state;
+  const seat = next.turnSeat;
+
+  while (!next.hands[seat].some((card) => isPlayableNow(next, card))) {
+    const before = next.hands[seat].length;
+    next = drawCards(next, seat, 1);
+
+    if (next.hands[seat].length === before) {
+      return finish(next, opponentOf(seat), "checkmate");
+    }
+    next = {
+      ...next,
+      log: log(next, seat, `${seatName(seat)} is in check and draws to answer it.`),
+    };
   }
 
   return next;
@@ -144,6 +179,25 @@ function requireActiveTurn(state: GameState, seat: Seat): void {
   if (seat !== state.turnSeat) {
     throw new IllegalActionError("not-your-turn", "It is not your turn.");
   }
+}
+
+/**
+ * Whether a card can actually be played right now.
+ *
+ * Uno legality is not the whole story: Reverse hands your army to your opponent,
+ * which is forbidden while your own king is in check. Anything deciding what a
+ * player may do — the draw rule, the UI's lit cards — has to ask this, not
+ * `isLegalPlay` alone, or a hand of nothing but Reverses deadlocks the turn.
+ */
+export function isPlayableNow(state: GameState, card: Card): boolean {
+  const top = state.discard[state.discard.length - 1];
+  if (!isLegalPlay(card, top, state.activeColor)) return false;
+  if (card.kind === "reverse" && positionStatus(state.fen).inCheck) return false;
+  return true;
+}
+
+export function playableCardIds(state: GameState, seat: Seat): string[] {
+  return state.hands[seat].filter((card) => isPlayableNow(state, card)).map((card) => card.id);
 }
 
 function playCard(
@@ -278,8 +332,7 @@ function drawCard(state: GameState, seat: Seat): GameState {
     throw new IllegalActionError("already-drew", "You have already drawn this turn.");
   }
 
-  const top = state.discard[state.discard.length - 1];
-  if (hasLegalPlay(state.hands[seat], top, state.activeColor)) {
+  if (state.hands[seat].some((card) => isPlayableNow(state, card))) {
     throw new IllegalActionError("must-play-legal-card", "You hold a playable card.");
   }
 
@@ -316,8 +369,25 @@ function makeMove(
 
   // Mate is checked after every move, not only at end of turn.
   const opponentArmy = next.ownership[opponentOf(seat)];
-  if (positionStatus(forceSideToMove(next.fen, opponentArmy)).checkmate) {
+  const opponentStatus = positionStatus(forceSideToMove(next.fen, opponentArmy));
+  if (opponentStatus.checkmate) {
     return finish(next, seat, "checkmate");
+  }
+
+  // Check ends your turn, and any moves left in the budget are forfeited.
+  //
+  // Without this, multi-move turns make check unanswerable: give check on the
+  // first of three moves and the second simply captures the king. Ordinary chess
+  // never reaches "the side not to move is in check", so nothing downstream
+  // guards against it. Handing the turn over the instant check appears is what
+  // keeps the chess underneath honest — and it makes checking a real cost, since
+  // you now sequence your moves to check last.
+  if (opponentStatus.inCheck) {
+    return endTurn({
+      ...next,
+      movesRemaining: 0,
+      log: log(next, seat, "Check — turn ends."),
+    });
   }
 
   return next.movesRemaining === 0 ? endTurn(next) : next;
@@ -327,6 +397,10 @@ function requestEndTurn(state: GameState, seat: Seat): GameState {
   requireActiveTurn(state, seat);
   if (!state.cardPlayedThisTurn && !state.drewThisTurn) {
     throw new IllegalActionError("turn-not-started", "Play or draw a card first.");
+  }
+  // Walking away in check would leave the king capturable next turn.
+  if (positionStatus(state.fen).inCheck) {
+    throw new IllegalActionError("check-unanswered", "You must answer the check.");
   }
   return endTurn(state);
 }

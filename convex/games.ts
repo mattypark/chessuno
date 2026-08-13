@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { vCardColor } from "./schema";
 import { legalMoves } from "../src/lib/rules/chessAdapter";
-import { createGame, opponentOf, reduce } from "../src/lib/rules/game";
+import { createGame, opponentOf, playableCardIds, reduce } from "../src/lib/rules/game";
 import {
   IllegalActionError,
   type GameAction,
@@ -166,6 +166,10 @@ export const get = query({
       log: state.log,
       // Only ever computed for the player who is actually on the move.
       legalMoves: isYourTurn && state.movesRemaining > 0 ? legalMoves(state.fen) : [],
+      // Uno legality plus the chess restrictions, so the UI cannot light a card
+      // the server is about to refuse.
+      playableCardIds:
+        isYourTurn && !state.cardPlayedThisTurn ? playableCardIds(state, seat) : [],
     };
   },
 });

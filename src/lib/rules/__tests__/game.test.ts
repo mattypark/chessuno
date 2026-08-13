@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { opponentOf, reduce } from "../game";
+import { legalMoves } from "../chessAdapter";
+import { opponentOf, playableCardIds, reduce } from "../game";
 import { IllegalActionError, type GameState } from "../types";
 import { card, makeState, num } from "./helpers";
 
@@ -195,6 +196,31 @@ describe("Reverse", () => {
     expect(played.result).toBe("checkmate");
   });
 
+  it("does not deadlock a turn when every matching card is a blocked Reverse", () => {
+    // Reverse matches the discard but is refused in check. If the draw rule only
+    // looked at Uno legality, this player could neither play nor draw.
+    const state = makeState({
+      fen: WHITE_IN_CHECK_FEN,
+      hands: [[card("reverse", "red"), card("reverse", "blue")], [num("red", 3)]],
+      discard: [card("reverse", "red")],
+      deck: [num("red", 6)],
+    });
+
+    expect(playableCardIds(state, 0)).toEqual([]);
+
+    const drawn = reduce(state, { type: "DRAW_CARD", seat: 0 });
+    expect(drawn.hands[0]).toHaveLength(3);
+    expect(playableCardIds(drawn, 0)).toEqual([drawn.hands[0][2].id]);
+  });
+
+  it("reports a Reverse as unplayable while in check, not merely refuses it", () => {
+    const playable = makeState({
+      fen: LADDER_FEN,
+      hands: [[card("reverse", "red")], [num("red", 3)]],
+    });
+    expect(playableCardIds(playable, 0)).toHaveLength(1);
+  });
+
   it("cannot be used to dodge check", () => {
     const state = makeState({
       fen: WHITE_IN_CHECK_FEN,
@@ -214,6 +240,81 @@ describe("Reverse", () => {
     expect(moved.turnSeat).toBe(1);
     expect(moved.ownership[1]).toBe("w");
     expect(moved.fen.split(" ")[1]).toBe("w");
+  });
+});
+
+describe("answering check", () => {
+  /** White to move. Ra1-a8 checks the e8 king, which can still run to the 7th. */
+  const CHECK_IN_ONE_FEN = "4k3/8/8/8/8/8/8/R6K w - - 0 1";
+
+  /** Plays seat 0's first card, then the checking rook move. */
+  function deliverCheck(state: GameState, declaredColor?: "green"): GameState {
+    const played = reduce(state, {
+      type: "PLAY_CARD",
+      seat: 0,
+      cardId: state.hands[0][0].id,
+      declaredColor,
+    });
+    return reduce(played, { type: "MAKE_MOVE", seat: 0, from: "a1", to: "a8" });
+  }
+
+  it("refuses to let you end your turn while your own king is in check", () => {
+    const state = makeState({
+      fen: WHITE_IN_CHECK_FEN,
+      hands: [[num("red", 1), num("blue", 2)], [num("red", 3)]],
+      cardPlayedThisTurn: true,
+      movesRemaining: 1,
+    });
+    expect(() => reduce(state, { type: "END_TURN", seat: 0 })).toThrow(/answer the check/);
+  });
+
+  it("draws the checked player into a playable card when they hold nothing", () => {
+    // Seat 1 is checked holding a card that matches nothing. Left alone, their
+    // turn would pass without a move and the king would simply be taken.
+    const state = makeState({
+      fen: CHECK_IN_ONE_FEN,
+      hands: [[card("wild", null), num("red", 1)], [num("blue", 2)]],
+      discard: [num("blue", 7)],
+      deck: [num("green", 9)],
+    });
+
+    const checked = deliverCheck(state, "green");
+    expect(checked.status).toBe("active");
+    expect(checked.turnSeat).toBe(1);
+    expect(checked.hands[1]).toHaveLength(2);
+    expect(playableCardIds(checked, 1)).toHaveLength(1);
+  });
+
+  it("is checkmate when no card can be found to answer the check", () => {
+    // Wild declares green, so neither seat 1's blue 2 nor the recycled blue 7
+    // can be played, and the piles run dry.
+    const state = makeState({
+      fen: CHECK_IN_ONE_FEN,
+      hands: [[card("wild", null), num("red", 1)], [num("blue", 2)]],
+      discard: [num("blue", 7)],
+      deck: [],
+    });
+
+    const checked = deliverCheck(state, "green");
+    expect(checked.status).toBe("finished");
+    expect(checked.winner).toBe(0);
+    expect(checked.result).toBe("checkmate");
+  });
+
+  it("lets check override a pending Skip", () => {
+    // Otherwise the checker skips the player they just checked and comes back to
+    // a board where the enemy king is hanging.
+    const state = makeState({
+      fen: CHECK_IN_ONE_FEN,
+      hands: [[card("skip", "green"), num("red", 1)], [num("green", 2)]],
+      discard: [card("skip", "blue")],
+      deck: [],
+    });
+
+    const checked = deliverCheck(state);
+    expect(checked.turnSeat).toBe(1);
+    expect(checked.pendingSkip).toBe(false);
+    expect(checked.log.some((entry) => entry.text.includes("cannot be skipped"))).toBe(true);
   });
 });
 
@@ -246,6 +347,41 @@ describe("winning", () => {
     expect(second.status).toBe("finished");
     expect(second.winner).toBe(0);
     expect(second.result).toBe("checkmate");
+  });
+
+  it("forfeits the rest of the budget the moment a move gives check", () => {
+    // Rb7 is quiet, Ra8 is check. With three moves banked, the turn still has to
+    // stop the instant check appears — otherwise the next move takes the king.
+    const state = makeState({
+      fen: "6k1/8/8/8/8/8/8/RR5K w - - 0 1",
+      hands: [[num("red", 9), num("blue", 1)], [num("red", 3), num("blue", 4)]],
+    });
+    const played = playFirstCard(state);
+    expect(played.movesRemaining).toBe(3);
+
+    const checking = reduce(played, { type: "MAKE_MOVE", seat: 0, from: "a1", to: "a8" });
+    expect(checking.status).toBe("active");
+    expect(checking.turnSeat).toBe(1);
+    expect(checking.movesRemaining).toBe(0);
+    expect(checking.log.some((entry) => entry.text.includes("Check"))).toBe(true);
+  });
+
+  it("never offers a king capture, because the checked side always moves next", () => {
+    const state = makeState({
+      fen: "6k1/8/8/8/8/8/8/RR5K w - - 0 1",
+      hands: [[num("red", 9), num("blue", 1)], [num("red", 3), num("blue", 4)]],
+    });
+    const checking = reduce(playFirstCard(state), {
+      type: "MAKE_MOVE",
+      seat: 0,
+      from: "a1",
+      to: "a8",
+    });
+
+    // It is black's turn and black is in check, so no white move exists to take
+    // the king — the position the old bug relied on cannot be reached.
+    expect(checking.fen.split(" ")[1]).toBe("b");
+    expect(legalMoves(checking.fen).every((move) => move.captured !== "k")).toBe(true);
   });
 
   it("ends the game when the turn passes to a player who is already mated", () => {

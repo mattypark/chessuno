@@ -15,10 +15,34 @@ flipped to open the discard pile. Player 1 owns White.
    legal). No legal card? Draw one — play it if you can, otherwise your turn ends with no
    moves made.
 2. The card grants a **move budget**.
-3. Spend it. Every move must be legal chess for the army you currently own. In check? Your
-   first move has to resolve it. Same piece twice is fine. Ending early is fine.
+3. Spend it. Every move must be legal chess for the army you currently own. Same piece
+   twice is fine. Ending early is fine.
 
 Win conditions are checked after every single move, not just at end of turn.
+
+### Check ends your turn
+
+The moment one of your moves gives check, your turn is over and any moves left in the
+budget are forfeited.
+
+This is not decoration — without it the game falls apart. Give check on the first of three
+moves and the second move simply captures the king, because ordinary chess never reaches
+"the side not to move is in check" and nothing downstream guards against it. Any two-move
+card would be an instant win.
+
+It also makes checking a genuine cost. You sequence your moves so the check lands last.
+
+### Answering check
+
+Because cards gate what you may do, a checked player can be left holding nothing playable —
+and a turn that passes with the check unanswered leaves the king hanging. So:
+
+- You cannot end your turn while your own king is in check.
+- In check with nothing playable, you draw until something is playable.
+- If the piles cannot supply an answer, that is checkmate.
+- Check outranks Skip. A player who owes a check answer cannot be skipped.
+- You cannot play Reverse while your own king is in check — handing over a checked army
+  leaves a position nobody is allowed to move from, and it would let you dodge mate.
 
 ## Cards
 
