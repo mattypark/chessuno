@@ -360,12 +360,23 @@ function makeMove(
     throw new IllegalActionError("illegal-move", `${from}-${to} is not a legal move.`);
   }
 
-  const next: GameState = {
+  let next: GameState = {
     ...state,
     fen: applied.fen,
     movesRemaining: state.movesRemaining - 1,
     log: log(state, seat, `${seatName(seat)} plays ${applied.san}.`),
   };
+
+  // Taking a piece costs you a card. This is what makes the two win conditions
+  // fight each other: every capture on the way to mate pushes the empty-hand win
+  // further away. Without it the card clock runs independently of the board and
+  // simply outruns it.
+  if (applied.captured) {
+    next = {
+      ...drawCards(next, seat, 1),
+      log: log(next, seat, `${seatName(seat)} captures and draws a card.`),
+    };
+  }
 
   // Mate is checked after every move, not only at end of turn.
   const opponentArmy = next.ownership[opponentOf(seat)];

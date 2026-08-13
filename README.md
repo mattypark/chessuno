@@ -49,11 +49,19 @@ and a turn that passes with the check unanswered leaves the king hanging. So:
 | Card | Effect |
 | --- | --- |
 | Number `N` (0–9) | Move budget = `max(1, ceil(N / 3))` — so 0–3 gives 1 move, 4–6 gives 2, 7–9 gives 3 |
+| *(any capture)* | Taking a piece draws you a card — see below |
 | Skip | Opponent loses their entire next turn. You get 1 move. |
 | Reverse | **The two players swap armies.** You now control their pieces. Then you get 1 move. |
 | Draw 2 | Opponent draws 2. You get 1 move. |
 | Wild | You declare the active colour. 1 move. |
 | Wild Draw 4 | Opponent draws 4, you declare the colour. 1 move. |
+
+### Captures cost cards
+
+Take a piece, draw a card. This is what makes the two win conditions fight each other —
+every capture on the road to mate pushes the empty-hand win further away. Without it the
+card clock runs independently of the board and simply outruns it: 196 of 200 simulated
+games ended on an empty hand before this rule existed.
 
 ### Reverse is the whole game
 

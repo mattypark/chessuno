@@ -243,6 +243,36 @@ describe("Reverse", () => {
   });
 });
 
+describe("captures cost cards", () => {
+  /** White rook a1, black rook a8: Rxa8 is a capture and gives no check. */
+  const CAPTURE_FEN = "r5k1/8/8/8/8/8/8/R6K w - - 0 1";
+
+  it("draws a card when you take a piece", () => {
+    const state = makeState({
+      fen: CAPTURE_FEN,
+      hands: [[num("red", 1), num("blue", 3)], [num("red", 3)]],
+      deck: [num("green", 5), num("green", 6)],
+    });
+    const played = reduce(state, { type: "PLAY_CARD", seat: 0, cardId: state.hands[0][0].id });
+    const captured = reduce(played, { type: "MAKE_MOVE", seat: 0, from: "a1", to: "a8" });
+
+    expect(captured.hands[0]).toHaveLength(2);
+    expect(captured.log.some((entry) => entry.text.includes("captures and draws"))).toBe(true);
+  });
+
+  it("draws nothing for a quiet move", () => {
+    const state = makeState({
+      fen: CAPTURE_FEN,
+      hands: [[num("red", 1), num("blue", 3)], [num("red", 3)]],
+      deck: [num("green", 5)],
+    });
+    const played = reduce(state, { type: "PLAY_CARD", seat: 0, cardId: state.hands[0][0].id });
+    const quiet = reduce(played, { type: "MAKE_MOVE", seat: 0, from: "a1", to: "a4" });
+
+    expect(quiet.hands[0]).toHaveLength(1);
+  });
+});
+
 describe("answering check", () => {
   /** White to move. Ra1-a8 checks the e8 king, which can still run to the 7th. */
   const CHECK_IN_ONE_FEN = "4k3/8/8/8/8/8/8/R6K w - - 0 1";
