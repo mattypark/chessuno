@@ -19,6 +19,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   const searchParams = useSearchParams();
   const profile = searchParams.get("as") ?? "";
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   // The token lives in localStorage, so it does not exist during SSR. Reading it
   // through an external store keeps the server snapshot empty without bouncing
@@ -41,12 +42,20 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     }
   }, [game, join, roomCode, token]);
 
+  // A dispatch is a round trip, and until it lands the view still shows the old
+  // turn — lit cards, movable pieces. Without this, a second click before the
+  // answer arrives sends a second action and the player is told off for something
+  // the interface invited them to do.
   async function send(action: Parameters<typeof dispatch>[0]["action"]) {
+    if (pending) return;
     setError(null);
+    setPending(true);
     try {
       await dispatch({ code: roomCode, playerToken: token, action });
     } catch (e) {
       setError(readableError(e));
+    } finally {
+      setPending(false);
     }
   }
 
@@ -62,12 +71,15 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   // the mutation can never disagree about what is possible.
   const yourTurn = game.isYourTurn;
   const waiting = !game.ready;
-  const canMove = yourTurn && game.movesRemaining > 0;
+  const canAct = yourTurn && !pending;
+  const canMove = canAct && game.movesRemaining > 0;
 
   if (waiting) {
     return (
       <Shell code={roomCode}>
-        <WaitingRoom code={roomCode} seated={seated} error={error} />
+        <div data-testid="waiting">
+          <WaitingRoom code={roomCode} seated={seated} error={error} />
+        </div>
       </Shell>
     );
   }
@@ -75,7 +87,9 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   return (
     <Shell code={roomCode}>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-4">
+        {/* min-w-0: grid children default to min-width:auto, so the scrolling hand
+            would otherwise widen the column and drag the board off screen. */}
+        <div className="min-w-0 space-y-4">
           <Board
             fen={game.fen}
             orientation={(game.yourArmy ?? "w") as Army}
@@ -97,18 +111,24 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
             />
             <div className="ml-auto flex gap-2">
               <ActionButton
-                disabled={!yourTurn || game.cardPlayedThisTurn || game.drewThisTurn}
+                testId="draw"
+                disabled={!canAct || game.cardPlayedThisTurn || game.drewThisTurn}
                 onClick={() => send({ type: "DRAW_CARD" })}
               >
                 draw
               </ActionButton>
               <ActionButton
-                disabled={!yourTurn || (!game.cardPlayedThisTurn && !game.drewThisTurn)}
+                testId="end-turn"
+                disabled={!canAct || (!game.cardPlayedThisTurn && !game.drewThisTurn)}
                 onClick={() => send({ type: "END_TURN" })}
               >
                 end turn
               </ActionButton>
-              <ActionButton disabled={!seated || game.status !== "active"} onClick={() => send({ type: "RESIGN" })}>
+              <ActionButton
+                testId="resign"
+                disabled={!seated || pending || game.status !== "active"}
+                onClick={() => send({ type: "RESIGN" })}
+              >
                 resign
               </ActionButton>
             </div>
@@ -116,20 +136,24 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
 
           <Hand
             hand={game.hand}
-            playableCardIds={game.playableCardIds}
+            playableCardIds={canAct ? game.playableCardIds : []}
             onPlay={(cardId, declaredColor) =>
               send({ type: "PLAY_CARD", cardId, declaredColor })
             }
           />
 
           {error && (
-            <p role="alert" className="rounded-lg bg-uno-red/20 px-3 py-2 text-sm text-cream">
+            <p
+              role="alert"
+              data-testid="error"
+              className="rounded-lg bg-uno-red/20 px-3 py-2 text-sm text-cream"
+            >
               {error}
             </p>
           )}
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <div className="flex items-end gap-4">
             <div className="space-y-1">
               <p className="font-mono text-xs uppercase tracking-widest text-chalk">discard</p>
@@ -276,14 +300,17 @@ function ActionButton({
   children,
   disabled,
   onClick,
+  testId,
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   onClick: () => void;
+  testId?: string;
 }) {
   return (
     <button
       type="button"
+      data-testid={testId}
       disabled={disabled}
       onClick={onClick}
       className="rounded-lg border-2 border-cream/25 px-3 py-1.5 font-mono text-sm transition-colors hover:border-uno-yellow disabled:opacity-35 disabled:hover:border-cream/25"
@@ -318,5 +345,9 @@ function StatusLine(props: {
     return props.cardPlayed ? "Turn spent — end it." : "Your turn — play a card.";
   })();
 
-  return <p className="font-mono text-sm text-cream">{text}</p>;
+  return (
+    <p data-testid="status" className="font-mono text-sm text-cream">
+      {text}
+    </p>
+  );
 }

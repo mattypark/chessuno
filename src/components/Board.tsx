@@ -72,6 +72,9 @@ export function Board({ fen, orientation, legalMoves, canMove, onMove }: BoardPr
               type="button"
               onClick={() => handleSquare(square)}
               aria-label={square}
+              data-square={square}
+              data-movable={String(canMove && movable.has(square))}
+              data-target={String(isTarget)}
               className={[
                 "relative grid place-items-center leading-none",
                 isLightSquare(square) ? "bg-square-light" : "bg-square-dark",
@@ -82,9 +85,17 @@ export function Board({ fen, orientation, legalMoves, canMove, onMove }: BoardPr
               {piece && (
                 <span
                   className={[
-                    "select-none text-[clamp(1.4rem,5.2vw,2.6rem)] drop-shadow-sm",
+                    "select-none text-[clamp(1.4rem,5.2vw,2.6rem)]",
                     piece.color === "w" ? "text-cream" : "text-ink",
                   ].join(" ")}
+                  style={{
+                    // Both armies use the same filled glyph, so each needs an
+                    // outline in the opposite tone to stay legible on either
+                    // colour of square.
+                    WebkitTextStroke:
+                      piece.color === "w" ? "1.5px var(--ink)" : "1px rgba(243,234,216,0.45)",
+                    paintOrder: "stroke fill",
+                  }}
                 >
                   {glyphFor(piece)}
                 </span>

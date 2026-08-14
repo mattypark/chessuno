@@ -66,7 +66,7 @@ export function Hand({ hand, playableCardIds, onPlay }: HandProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div data-testid="hand" className="flex gap-2 overflow-x-auto pb-2">
         {hand.map((card) => {
           const playable = playableSet.has(card.id);
           return (

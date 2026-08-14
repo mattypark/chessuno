@@ -35,23 +35,24 @@ export function parseFen(fen: string): BoardMap {
   return board;
 }
 
+/**
+ * Solid glyphs for both armies, coloured by fill rather than by character.
+ *
+ * The hollow outline set (♔♕♖…) is the obvious choice for white and the wrong
+ * one: on a light square a cream outline glyph is cream on cream and simply
+ * disappears. Filled shapes read at every size on either colour of square.
+ */
 const GLYPHS: Record<string, string> = {
-  wk: "♔",
-  wq: "♕",
-  wr: "♖",
-  wb: "♗",
-  wn: "♘",
-  wp: "♙",
-  bk: "♚",
-  bq: "♛",
-  br: "♜",
-  bb: "♝",
-  bn: "♞",
-  bp: "♟",
+  k: "♚",
+  q: "♛",
+  r: "♜",
+  b: "♝",
+  n: "♞",
+  p: "♟",
 };
 
 export function glyphFor(piece: Piece): string {
-  return GLYPHS[`${piece.color}${piece.type}`] ?? "";
+  return GLYPHS[piece.type] ?? "";
 }
 
 /** Squares in render order, from the given army's point of view. */

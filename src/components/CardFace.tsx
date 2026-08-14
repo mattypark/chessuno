@@ -49,13 +49,18 @@ export function CardFace({ card, playable, onClick, size = "md" }: CardFaceProps
       disabled={!interactive}
       onClick={onClick}
       aria-label={`${card.color ?? "wild"} ${symbol(card)}`}
+      data-testid="card"
+      data-card-id={card.id}
+      data-card-kind={card.kind}
+      data-playable={String(Boolean(playable))}
       className={[
         dims,
         faceClass(card),
         "relative shrink-0 rounded-xl border-2 border-cream/90 shadow-lg shadow-black/40",
         "transition-transform duration-150 will-change-transform",
         interactive ? "cursor-pointer hover:-translate-y-2 focus-visible:-translate-y-2" : "",
-        playable === false ? "opacity-45 saturate-50" : "",
+        // Dimmed, not desaturated — the colour is the information you plan with.
+        playable === false ? "opacity-50" : "",
         playable ? "ring-2 ring-cream/90 ring-offset-2 ring-offset-felt-deep" : "",
       ].join(" ")}
     >
