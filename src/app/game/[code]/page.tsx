@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState, useSyncExternalStore } from "rea
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import { Board } from "@/components/Board";
 import { CardBack, CardFace } from "@/components/CardFace";
@@ -36,7 +37,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   useEffect(() => {
     if (!token || !game) return;
     if (game.seat === null && game.playerCount < 2) {
-      join({ code: roomCode, playerToken: token }).catch((e) => setError(String(e.message ?? e)));
+      join({ code: roomCode, playerToken: token }).catch((e) => setError(readableError(e)));
     }
   }, [game, join, roomCode, token]);
 
@@ -45,7 +46,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     try {
       await dispatch({ code: roomCode, playerToken: token, action });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(readableError(e));
     }
   }
 
@@ -57,10 +58,19 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   }
 
   const seated = game.seat !== null;
-  const yourTurn = seated && game.seat === game.turnSeat && game.status === "active";
-  const waiting = game.playerCount < 2;
-  const canPlayCard = yourTurn && !waiting && !game.cardPlayedThisTurn;
-  const canMove = yourTurn && !waiting && game.movesRemaining > 0;
+  // The server already folded "are there two players" into these, so the UI and
+  // the mutation can never disagree about what is possible.
+  const yourTurn = game.isYourTurn;
+  const waiting = !game.ready;
+  const canMove = yourTurn && game.movesRemaining > 0;
+
+  if (waiting) {
+    return (
+      <Shell code={roomCode}>
+        <WaitingRoom code={roomCode} seated={seated} error={error} />
+      </Shell>
+    );
+  }
 
   return (
     <Shell code={roomCode}>
@@ -76,7 +86,6 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
 
           <div className="flex flex-wrap items-center gap-3">
             <StatusLine
-              waiting={waiting}
               status={game.status}
               yourTurn={yourTurn}
               seated={seated}
@@ -88,7 +97,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
             />
             <div className="ml-auto flex gap-2">
               <ActionButton
-                disabled={!canPlayCard || game.drewThisTurn}
+                disabled={!yourTurn || game.cardPlayedThisTurn || game.drewThisTurn}
                 onClick={() => send({ type: "DRAW_CARD" })}
               >
                 draw
@@ -162,6 +171,84 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   );
 }
 
+/**
+ * Convex wraps a thrown Error in a stack trace before it reaches the client, so a
+ * plain `.message` puts "Uncaught Error … at handler" in front of the player. The
+ * server throws ConvexError precisely so the payload survives intact.
+ */
+function readableError(error: unknown): string {
+  if (error instanceof ConvexError) return String(error.data);
+  const raw = error instanceof Error ? error.message : String(error);
+  return raw.match(/Uncaught (?:Convex)?Error:\s*(.*)/)?.[1]?.trim() ?? raw;
+}
+
+/**
+ * A room with one player in it is not a game. Saying so plainly beats rendering a
+ * board that looks live and refuses every click.
+ */
+function WaitingRoom({
+  code,
+  seated,
+  error,
+}: {
+  code: string;
+  seated: boolean;
+  error: string | null;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy(text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <div className="mx-auto max-w-md space-y-7 py-10">
+      <div className="space-y-2">
+        <h1 className="font-mono text-2xl">Waiting for an opponent</h1>
+        <p className="text-sm leading-relaxed text-chalk">
+          {seated
+            ? "You have a seat. The game starts the moment someone else opens this room."
+            : "This room is full."}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="font-mono text-xs uppercase tracking-widest text-chalk">room code</p>
+        <button
+          type="button"
+          onClick={() => copy(code)}
+          className="w-full rounded-lg border-2 border-cream/25 bg-black/25 px-5 py-4 text-left font-mono text-4xl tracking-[0.4em] transition-colors hover:border-uno-yellow"
+        >
+          {code}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => copy(window.location.href)}
+          className="w-full rounded-lg bg-uno-red px-5 py-3 font-mono font-bold text-cream shadow-lg shadow-black/40 transition-transform hover:-translate-y-0.5"
+        >
+          {copied ? "copied" : "copy invite link"}
+        </button>
+        <p className="text-sm leading-relaxed text-chalk">
+          Testing alone? Open{" "}
+          <code className="text-cream">?as=2</code> on the end of this URL in a second tab —
+          that tab gets its own identity and takes the other seat.
+        </p>
+      </div>
+
+      {error && (
+        <p role="alert" className="rounded-lg bg-uno-red/20 px-3 py-2 text-sm text-cream">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Shell({ code, children }: { code: string; children: React.ReactNode }) {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 p-4 sm:p-6">
@@ -207,7 +294,6 @@ function ActionButton({
 }
 
 function StatusLine(props: {
-  waiting: boolean;
   status: string;
   yourTurn: boolean;
   seated: boolean;
@@ -225,7 +311,6 @@ function StatusLine(props: {
         : `You lose by ${props.result}.`;
     }
     if (!props.seated) return "Spectating — this game is full.";
-    if (props.waiting) return "Waiting for a second player…";
     if (!props.yourTurn) return "Their turn.";
     if (props.movesRemaining > 0) {
       return `${props.movesRemaining} move${props.movesRemaining === 1 ? "" : "s"} left.`;

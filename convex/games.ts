@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { vCardColor } from "./schema";
@@ -63,13 +63,13 @@ export const join = mutation({
   args: { code: v.string(), playerToken: v.string() },
   handler: async (ctx, { code, playerToken }) => {
     const game = await findByCode(ctx, code);
-    if (!game) throw new Error("No game with that code.");
+    if (!game) throw new ConvexError("No game with that code.");
 
     const existing = seatOf(game.playerTokens, playerToken);
     if (existing !== null) return { seat: existing };
 
     if (game.playerTokens.length >= 2) {
-      throw new Error("That game already has two players.");
+      throw new ConvexError("That game already has two players.");
     }
 
     await ctx.db.patch(game._id, {
@@ -107,13 +107,13 @@ export const dispatch = mutation({
   args: { code: v.string(), playerToken: v.string(), action: vAction },
   handler: async (ctx, { code, playerToken, action }) => {
     const game = await findByCode(ctx, code);
-    if (!game) throw new Error("No game with that code.");
+    if (!game) throw new ConvexError("No game with that code.");
 
     const seat = seatOf(game.playerTokens, playerToken);
-    if (seat === null) throw new Error("You are not seated in this game.");
+    if (seat === null) throw new ConvexError("You are not seated in this game.");
 
     if (game.playerTokens.length < 2) {
-      throw new Error("Waiting for a second player.");
+      throw new ConvexError("Waiting for a second player.");
     }
 
     try {
@@ -122,7 +122,7 @@ export const dispatch = mutation({
     } catch (error) {
       if (error instanceof IllegalActionError) {
         // Surfaced to the player as a readable message; the state is left alone.
-        throw new Error(error.message);
+        throw new ConvexError(error.message);
       }
       throw error;
     }
@@ -143,12 +143,19 @@ export const get = query({
 
     const seat = seatOf(game.playerTokens, playerToken);
     const state = asGameState(game.state);
-    const isYourTurn = seat !== null && seat === state.turnSeat && state.status === "active";
+    // A game with one player in it is not playable, and the view must say so —
+    // otherwise the board looks live, cards light up, and every action bounces
+    // off the mutation with "waiting for a second player".
+    const ready = game.playerTokens.length === 2;
+    const isYourTurn =
+      ready && seat !== null && seat === state.turnSeat && state.status === "active";
 
     return {
       code: game.code,
       seat,
       playerCount: game.playerTokens.length,
+      ready,
+      isYourTurn,
       fen: state.fen,
       activeColor: state.activeColor,
       discardTop: state.discard[state.discard.length - 1],
