@@ -60,10 +60,10 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   }
 
   if (game === undefined) {
-    return <Shell code={roomCode}><p className="text-chalk">Loading…</p></Shell>;
+    return <Shell code={roomCode}><p className="text-text-dim">Loading…</p></Shell>;
   }
   if (game === null) {
-    return <Shell code={roomCode}><p className="text-chalk">No game with that code.</p></Shell>;
+    return <Shell code={roomCode}><p className="text-text-dim">No game with that code.</p></Shell>;
   }
 
   const seated = game.seat !== null;
@@ -94,6 +94,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
             fen={game.fen}
             orientation={(game.yourArmy ?? "w") as Army}
             legalMoves={game.legalMoves}
+            lastMove={game.lastMove}
             canMove={canMove}
             onMove={(move) => send({ type: "MAKE_MOVE", ...move })}
           />
@@ -146,7 +147,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
             <p
               role="alert"
               data-testid="error"
-              className="rounded-lg bg-uno-red/20 px-3 py-2 text-sm text-cream"
+              className="rounded-md border border-uno-red/50 bg-uno-red/15 px-3 py-2 text-sm text-text"
             >
               {error}
             </p>
@@ -156,19 +157,19 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
         <aside className="min-w-0 space-y-5">
           <div className="flex items-end gap-4">
             <div className="space-y-1">
-              <p className="font-mono text-xs uppercase tracking-widest text-chalk">discard</p>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-text-dim">discard</p>
               <CardFace card={game.discardTop} size="sm" />
             </div>
             <div className="space-y-1">
-              <p className="font-mono text-xs uppercase tracking-widest text-chalk">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-text-dim">
                 deck {game.deckCount}
               </p>
               <CardBack size="sm" />
             </div>
             <div className="space-y-1">
-              <p className="font-mono text-xs uppercase tracking-widest text-chalk">colour</p>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-text-dim">colour</p>
               <span
-                className="block h-8 w-8 rounded-full border-2 border-cream/80"
+                className="block h-8 w-8 rounded-full border-2 border-white/70"
                 style={{ background: `var(--uno-${game.activeColor})` }}
               />
             </div>
@@ -182,8 +183,8 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
           </dl>
 
           <div className="space-y-1">
-            <p className="font-mono text-xs uppercase tracking-widest text-chalk">log</p>
-            <ol className="max-h-72 space-y-1 overflow-y-auto rounded-lg bg-black/25 p-3 text-sm text-chalk">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-text-dim">log</p>
+            <ol className="max-h-80 space-y-1.5 overflow-y-auto rounded-md border border-line bg-panel p-3 text-sm text-text-dim">
               {game.log.slice(-40).reverse().map((entry, index) => (
                 <li key={`${index}-${entry.text}`}>{entry.text}</li>
               ))}
@@ -230,8 +231,8 @@ function WaitingRoom({
   return (
     <div className="mx-auto max-w-md space-y-7 py-10">
       <div className="space-y-2">
-        <h1 className="font-mono text-2xl">Waiting for an opponent</h1>
-        <p className="text-sm leading-relaxed text-chalk">
+        <h1 className="text-2xl font-bold">Waiting for an opponent</h1>
+        <p className="text-sm leading-relaxed text-text-dim">
           {seated
             ? "You have a seat. The game starts the moment someone else opens this room."
             : "This room is full."}
@@ -239,11 +240,11 @@ function WaitingRoom({
       </div>
 
       <div className="space-y-2">
-        <p className="font-mono text-xs uppercase tracking-widest text-chalk">room code</p>
+        <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-text-dim">room code</p>
         <button
           type="button"
           onClick={() => copy(code)}
-          className="w-full rounded-lg border-2 border-cream/25 bg-black/25 px-5 py-4 text-left font-mono text-4xl tracking-[0.4em] transition-colors hover:border-uno-yellow"
+          className="w-full rounded-md border border-line bg-panel px-5 py-4 text-left font-mono text-4xl tracking-[0.4em] transition-colors hover:border-accent"
         >
           {code}
         </button>
@@ -253,19 +254,19 @@ function WaitingRoom({
         <button
           type="button"
           onClick={() => copy(window.location.href)}
-          className="w-full rounded-lg bg-uno-red px-5 py-3 font-mono font-bold text-cream shadow-lg shadow-black/40 transition-transform hover:-translate-y-0.5"
+          className="w-full rounded-md bg-accent px-5 py-3 font-bold text-accent-ink shadow-[0_3px_0_#5d8a33] transition-colors hover:bg-accent-bright"
         >
           {copied ? "copied" : "copy invite link"}
         </button>
-        <p className="text-sm leading-relaxed text-chalk">
+        <p className="text-sm leading-relaxed text-text-dim">
           Testing alone? Open{" "}
-          <code className="text-cream">?as=2</code> on the end of this URL in a second tab —
+          <code className="text-text">?as=2</code> on the end of this URL in a second tab —
           that tab gets its own identity and takes the other seat.
         </p>
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-uno-red/20 px-3 py-2 text-sm text-cream">
+        <p role="alert" className="rounded-md border border-uno-red/50 bg-uno-red/15 px-3 py-2 text-sm text-text">
           {error}
         </p>
       )}
@@ -277,10 +278,10 @@ function Shell({ code, children }: { code: string; children: React.ReactNode }) 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 p-4 sm:p-6">
       <header className="flex items-baseline gap-4">
-        <Link href="/" className="font-mono text-2xl font-bold">
-          chess<span className="text-uno-yellow">uno</span>
+        <Link href="/" className="text-2xl font-bold">
+          chess<span className="text-accent">uno</span>
         </Link>
-        <span className="font-mono tracking-[0.35em] text-chalk">{code}</span>
+        <span className="rounded border border-line bg-panel px-2 py-1 font-mono text-sm tracking-[0.3em] text-text-dim">{code}</span>
       </header>
       {children}
     </main>
@@ -289,9 +290,9 @@ function Shell({ code, children }: { code: string; children: React.ReactNode }) 
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-black/25 px-3 py-2">
-      <dt className="text-[0.65rem] uppercase tracking-widest text-chalk">{label}</dt>
-      <dd className="text-cream">{value}</dd>
+    <div className="rounded-md border border-line bg-panel px-3 py-2">
+      <dt className="text-[0.62rem] font-semibold uppercase tracking-widest text-text-dim">{label}</dt>
+      <dd className="font-semibold text-text">{value}</dd>
     </div>
   );
 }
@@ -313,7 +314,7 @@ function ActionButton({
       data-testid={testId}
       disabled={disabled}
       onClick={onClick}
-      className="rounded-lg border-2 border-cream/25 px-3 py-1.5 font-mono text-sm transition-colors hover:border-uno-yellow disabled:opacity-35 disabled:hover:border-cream/25"
+      className="rounded-md border border-line bg-panel-raised px-3.5 py-1.5 text-sm font-semibold transition-colors hover:border-accent disabled:opacity-35 disabled:hover:border-line"
     >
       {children}
     </button>
@@ -346,7 +347,7 @@ function StatusLine(props: {
   })();
 
   return (
-    <p data-testid="status" className="font-mono text-sm text-cream">
+    <p data-testid="status" className="text-sm font-semibold text-text">
       {text}
     </p>
   );

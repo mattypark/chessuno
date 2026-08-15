@@ -13,6 +13,8 @@ import { mkdirSync } from "node:fs";
 
 const BASE = process.argv.find((a) => a.startsWith("http")) ?? "http://localhost:3002";
 const HEADED = process.argv.includes("--headed");
+// --quick stops after the opening screenshots, for iterating on visuals.
+const QUICK = process.argv.includes("--quick");
 const SHOTS = "test-artifacts";
 const MAX_TURNS = 60;
 
@@ -79,7 +81,7 @@ try {
 
   console.log("lobby");
   await a.goto(BASE);
-  await a.getByRole("button", { name: "new game" }).click();
+  await a.click('[data-testid="create-game"]');
   await a.waitForURL(/\/game\/[A-Z0-9]{4}/, { timeout: 15000 });
   const code = new URL(a.url()).pathname.split("/").pop();
   check(Boolean(code), `created room ${code}`);
@@ -113,6 +115,10 @@ try {
   await shot(a, "03-game-start-p1");
   await shot(b, "03-game-start-p2");
 
+  if (QUICK) {
+    console.log("\nquick mode — stopping after the opening screenshots");
+  }
+
   console.log("\nplaying a full game through the UI");
   let turns = 0;
   let cardsPlayed = 0;
@@ -121,7 +127,7 @@ try {
 
   let stalls = 0;
 
-  while (turns < MAX_TURNS && stalls < 25) {
+  while (!QUICK && turns < MAX_TURNS && stalls < 25) {
     const states = [await readUi(a), await readUi(b)];
 
     const over = states.find(
@@ -210,8 +216,10 @@ try {
     await settle(page);
   }
 
-  check(cardsPlayed > 0, `cards were played through the UI (${cardsPlayed})`);
-  check(movesMade > 0, `pieces were moved through the UI (${movesMade})`);
+  if (!QUICK) {
+    check(cardsPlayed > 0, `cards were played through the UI (${cardsPlayed})`);
+    check(movesMade > 0, `pieces were moved through the UI (${movesMade})`);
+  }
   await shot(a, "05-final-p1");
   await shot(b, "05-final-p2");
   console.log(`\n  played ${cardsPlayed} cards and ${movesMade} moves${finished ? ` — ${finished}` : ""}`);

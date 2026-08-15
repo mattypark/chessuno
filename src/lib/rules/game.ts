@@ -48,6 +48,7 @@ export function createGame(roomCode: string): GameState {
     hands: [[], []],
     ownership: ["w", "b"],
     turnSeat: 0,
+    lastMove: null,
     movesRemaining: 0,
     pendingSkip: false,
     cardPlayedThisTurn: false,
@@ -363,6 +364,7 @@ function makeMove(
   let next: GameState = {
     ...state,
     fen: applied.fen,
+    lastMove: { from, to },
     movesRemaining: state.movesRemaining - 1,
     log: log(state, seat, `${seatName(seat)} plays ${applied.san}.`),
   };

@@ -1,50 +1,69 @@
 @import "tailwindcss";
 
 /*
- * chessuno is a card table with a chess board on it, so the palette starts from
- * felt and wood rather than from a neutral UI grey. The four Uno colours are the
- * only saturated things on screen — everything else stays out of their way.
+ * Two palettes living together, deliberately unequal.
+ *
+ * The chrome is chess.com's: charcoal, one green accent, almost no colour
+ * anywhere else. That restraint is the point — it leaves the Uno cards as the
+ * only saturated thing on screen, so the hand reads as the loud half of the game
+ * and the board stays calm enough to think on.
  */
 :root {
-  --felt: #10321f;
-  --felt-deep: #0a2216;
-  --rail: #4a2f1c;
-  --cream: #f3ead8;
-  --ink: #12100c;
-  --chalk: #cbbfa4;
+  --bg: #302e2b;
+  --bg-deep: #272522;
+  --panel: #262522;
+  --panel-raised: #3a3937;
+  --line: #3d3b38;
 
-  --square-light: #efe2c6;
-  --square-dark: #86643f;
-  --square-move: #d8b23f;
+  --text: #e9e7e4;
+  --text-dim: #a09c96;
 
-  --uno-red: #d0202c;
-  --uno-yellow: #edb208;
-  --uno-green: #1e9b4c;
-  --uno-blue: #1160c4;
+  --accent: #81b64c;
+  --accent-bright: #a3d160;
+  --accent-ink: #1c2410;
+
+  --square-light: #ebecd0;
+  --square-dark: #739552;
+  --square-marked: #f5f682;
+  --square-hint: rgba(20, 20, 18, 0.16);
+
+  /* The real UNO deck, not a muted interpretation of it. */
+  --uno-red: #ed1c24;
+  --uno-yellow: #ffce00;
+  --uno-green: #00a651;
+  --uno-blue: #0072bc;
+  --card-face: #f7f6f2;
+  --card-ink: #1a1a18;
 }
 
 @theme inline {
-  --color-felt: var(--felt);
-  --color-felt-deep: var(--felt-deep);
-  --color-rail: var(--rail);
-  --color-cream: var(--cream);
-  --color-ink: var(--ink);
-  --color-chalk: var(--chalk);
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-ink: var(--accent-ink);
   --color-square-light: var(--square-light);
   --color-square-dark: var(--square-dark);
-  --color-square-move: var(--square-move);
+  --color-square-marked: var(--square-marked);
+  --color-square-hint: var(--square-hint);
   --color-uno-red: var(--uno-red);
   --color-uno-yellow: var(--uno-yellow);
   --color-uno-green: var(--uno-green);
   --color-uno-blue: var(--uno-blue);
+  --color-card-face: var(--card-face);
+  --color-card-ink: var(--card-ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background:
-    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--felt) 88%, white), var(--felt-deep) 72%);
-  color: var(--cream);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 

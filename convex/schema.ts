@@ -37,6 +37,9 @@ export const vGameState = v.object({
   hands: v.array(v.array(vCard)),
   ownership: v.array(vArmy),
   turnSeat: v.number(),
+  // Optional so games created before this field existed still validate; the
+  // query normalises the absence back to null.
+  lastMove: v.optional(v.union(v.object({ from: v.string(), to: v.string() }), v.null())),
   movesRemaining: v.number(),
   pendingSkip: v.boolean(),
   cardPlayedThisTurn: v.boolean(),

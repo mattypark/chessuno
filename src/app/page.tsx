@@ -23,25 +23,26 @@ export default function LobbyPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-10 p-6">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-9 p-6">
       <header className="space-y-3">
-        <h1 className="font-mono text-5xl font-bold tracking-tight">
-          chess<span className="text-uno-yellow">uno</span>
+        <h1 className="text-4xl font-bold tracking-tight">
+          chess<span className="text-accent">uno</span>
         </h1>
-        <p className="max-w-sm text-balance leading-relaxed text-chalk">
+        <p className="text-balance leading-relaxed text-text-dim">
           The cards decide what you may do on the board. Checkmate them, or empty your
           hand — both count.
         </p>
       </header>
 
-      <div className="space-y-5">
+      <div className="space-y-3">
         <button
           type="button"
           onClick={handleCreate}
           disabled={busy}
-          className="w-full rounded-lg bg-uno-red px-5 py-3 font-mono text-lg font-bold text-cream shadow-lg shadow-black/40 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+          data-testid="create-game"
+          className="w-full rounded-md bg-accent px-5 py-3.5 text-lg font-bold text-accent-ink shadow-[0_3px_0_#5d8a33] transition-colors hover:bg-accent-bright disabled:opacity-60"
         >
-          {busy ? "dealing…" : "new game"}
+          {busy ? "Dealing…" : "Play a friend"}
         </button>
 
         <form
@@ -57,28 +58,29 @@ export default function LobbyPage() {
             placeholder="ROOM CODE"
             maxLength={4}
             aria-label="Room code"
-            className="min-w-0 flex-1 rounded-lg border-2 border-cream/25 bg-black/25 px-4 py-3 font-mono text-lg tracking-[0.3em] placeholder:text-chalk/50 focus:border-uno-yellow focus:outline-none"
+            className="min-w-0 flex-1 rounded-md border border-line bg-panel px-4 py-3 font-mono text-lg tracking-[0.3em] placeholder:text-text-dim/60 focus:border-accent focus:outline-none"
           />
           <button
             type="submit"
-            className="rounded-lg border-2 border-cream/25 px-5 font-mono font-bold text-cream transition-colors hover:border-uno-yellow"
+            className="rounded-md border border-line bg-panel-raised px-5 font-semibold transition-colors hover:border-accent"
           >
-            join
+            Join
           </button>
         </form>
       </div>
 
-      <section className="space-y-2 text-sm leading-relaxed text-chalk">
-        <h2 className="font-mono text-cream">How a turn goes</h2>
+      <section className="space-y-3 rounded-md border border-line bg-panel p-4 text-sm leading-relaxed text-text-dim">
+        <h2 className="font-semibold text-text">How a turn goes</h2>
         <p>
           Play a card matching the discard. Numbers buy you moves —{" "}
-          <span className="text-cream">ceil(N/3)</span>, so a 7 is three moves in a row.
+          <span className="text-text">ceil(N/3)</span>, so a 7 is three moves in a row.
           Skip costs them their turn. Draw 2 and Wild Draw 4 stuff their hand.
         </p>
         <p>
-          <span className="text-uno-yellow">Reverse swaps armies.</span> You take over
-          their pieces, they take over yours. Your hand stays yours.
+          <span className="font-semibold text-accent">Reverse swaps armies.</span> You take
+          over their pieces, they take over yours. Your hand stays yours.
         </p>
+        <p>Check ends your turn. Take a piece and you draw a card.</p>
       </section>
     </main>
   );

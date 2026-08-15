@@ -40,9 +40,9 @@ export function Hand({ hand, playableCardIds, onPlay }: HandProps) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="flex items-center gap-3 rounded-lg bg-black/30 px-3 py-2"
+            className="flex items-center gap-3 rounded-md bg-panel-raised px-3 py-2"
           >
-            <span className="text-sm text-chalk">Declare a colour</span>
+            <span className="text-sm text-text-dim">Declare a colour</span>
             {CARD_COLORS.map((color) => (
               <button
                 key={color}
@@ -52,13 +52,13 @@ export function Hand({ hand, playableCardIds, onPlay }: HandProps) {
                   onPlay(pendingWild, color);
                   setPendingWild(null);
                 }}
-                className={`${SWATCH[color]} h-7 w-7 rounded-full border-2 border-cream/80 transition-transform hover:scale-110`}
+                className={`${SWATCH[color]} h-8 w-8 rounded-full border-2 border-white/70 transition-transform hover:scale-110`}
               />
             ))}
             <button
               type="button"
               onClick={() => setPendingWild(null)}
-              className="ml-auto text-sm text-chalk underline underline-offset-2"
+              className="ml-auto text-sm text-text-dim underline underline-offset-2 hover:text-text"
             >
               cancel
             </button>
@@ -78,7 +78,7 @@ export function Hand({ hand, playableCardIds, onPlay }: HandProps) {
             />
           );
         })}
-        {hand.length === 0 && <p className="text-sm text-chalk">No cards.</p>}
+        {hand.length === 0 && <p className="text-sm text-text-dim">No cards.</p>}
       </div>
     </div>
   );

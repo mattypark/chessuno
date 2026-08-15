@@ -2,13 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  glyphFor,
-  isLightSquare,
-  isPromotion,
-  parseFen,
-  squaresFor,
-} from "@/lib/board";
+import { ChessPiece } from "./ChessPiece";
+import { isLightSquare, isPromotion, parseFen, squaresFor } from "@/lib/board";
 import type { LegalMove } from "@/lib/rules/chessAdapter";
 import type { Army } from "@/lib/rules/types";
 
@@ -17,11 +12,19 @@ export interface BoardProps {
   /** Which way up the board is drawn — always the viewer's own army. */
   orientation: Army;
   legalMoves: LegalMove[];
+  lastMove: { from: string; to: string } | null;
   canMove: boolean;
   onMove: (move: { from: string; to: string; promotion?: string }) => void;
 }
 
-export function Board({ fen, orientation, legalMoves, canMove, onMove }: BoardProps) {
+export function Board({
+  fen,
+  orientation,
+  legalMoves,
+  lastMove,
+  canMove,
+  onMove,
+}: BoardProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const board = useMemo(() => parseFen(fen), [fen]);
@@ -37,11 +40,10 @@ export function Board({ fen, orientation, legalMoves, canMove, onMove }: BoardPr
     if (!canMove) return;
 
     if (selected && targets.includes(square)) {
-      const piece = board[selected];
       onMove({
         from: selected,
         to: square,
-        promotion: isPromotion(piece, square) ? "q" : undefined,
+        promotion: isPromotion(board[selected], square) ? "q" : undefined,
       });
       setSelected(null);
       return;
@@ -58,13 +60,21 @@ export function Board({ fen, orientation, legalMoves, canMove, onMove }: BoardPr
       initial={{ rotateY: 180, opacity: 0 }}
       animate={{ rotateY: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-xl border-4 border-rail bg-rail p-1 shadow-2xl shadow-black/50 [transform-style:preserve-3d]"
+      className="overflow-hidden rounded-md shadow-2xl shadow-black/40 [transform-style:preserve-3d]"
     >
-      <div className="grid aspect-square w-full grid-cols-8 overflow-hidden rounded-sm">
-        {squares.map((square) => {
+      <div className="grid aspect-square w-full grid-cols-8">
+        {squares.map((square, index) => {
           const piece = board[square];
+          const light = isLightSquare(square);
           const isTarget = targets.includes(square);
           const isSelected = selected === square;
+          const isLast = lastMove?.from === square || lastMove?.to === square;
+
+          // Coordinates ride the edges of the board, as on a real set: files
+          // along the bottom row, ranks up the left.
+          const showFile = index >= 56;
+          const showRank = index % 8 === 0;
+          const label = light ? "text-square-dark" : "text-square-light";
 
           return (
             <button
@@ -76,39 +86,41 @@ export function Board({ fen, orientation, legalMoves, canMove, onMove }: BoardPr
               data-movable={String(canMove && movable.has(square))}
               data-target={String(isTarget)}
               className={[
-                "relative grid place-items-center leading-none",
-                isLightSquare(square) ? "bg-square-light" : "bg-square-dark",
-                isSelected ? "outline outline-4 -outline-offset-4 outline-square-move" : "",
+                "relative grid place-items-center",
+                light ? "bg-square-light" : "bg-square-dark",
                 canMove && movable.has(square) ? "cursor-pointer" : "cursor-default",
               ].join(" ")}
             >
+              {(isLast || isSelected) && (
+                <span className="pointer-events-none absolute inset-0 bg-square-marked/55" />
+              )}
+
               {piece && (
+                <ChessPiece piece={piece} className="relative h-[86%] w-[86%] drop-shadow-sm" />
+              )}
+
+              {isTarget &&
+                (piece ? (
+                  // Captures get a ring around the victim rather than a dot on top
+                  // of it, so you can still see what you are taking.
+                  <span className="pointer-events-none absolute inset-0 rounded-[3px] border-[6px] border-square-hint" />
+                ) : (
+                  <span className="pointer-events-none absolute h-[30%] w-[30%] rounded-full bg-square-hint" />
+                ))}
+
+              {showRank && (
                 <span
-                  className={[
-                    "select-none text-[clamp(1.4rem,5.2vw,2.6rem)]",
-                    piece.color === "w" ? "text-cream" : "text-ink",
-                  ].join(" ")}
-                  style={{
-                    // Both armies use the same filled glyph, so each needs an
-                    // outline in the opposite tone to stay legible on either
-                    // colour of square.
-                    WebkitTextStroke:
-                      piece.color === "w" ? "1.5px var(--ink)" : "1px rgba(243,234,216,0.45)",
-                    paintOrder: "stroke fill",
-                  }}
+                  className={`pointer-events-none absolute left-0.5 top-0 text-[0.55rem] font-bold ${label}`}
                 >
-                  {glyphFor(piece)}
+                  {square[1]}
                 </span>
               )}
-              {isTarget && (
+              {showFile && (
                 <span
-                  className={[
-                    "pointer-events-none absolute",
-                    piece
-                      ? "inset-0 rounded-sm ring-4 ring-inset ring-square-move"
-                      : "h-1/3 w-1/3 rounded-full bg-square-move/80",
-                  ].join(" ")}
-                />
+                  className={`pointer-events-none absolute bottom-0 right-0.5 text-[0.55rem] font-bold ${label}`}
+                >
+                  {square[0]}
+                </span>
               )}
             </button>
           );

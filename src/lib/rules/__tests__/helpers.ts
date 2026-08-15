@@ -28,6 +28,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     ],
     ownership: ["w", "b"],
     turnSeat: 0,
+    lastMove: null,
     movesRemaining: 0,
     pendingSkip: false,
     cardPlayedThisTurn: false,

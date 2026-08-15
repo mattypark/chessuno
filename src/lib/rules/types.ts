@@ -50,6 +50,8 @@ export interface GameState {
   /** seat -> army. Reverse swaps these two entries. */
   ownership: [Army, Army];
   turnSeat: Seat;
+  /** The squares of the most recent move, for the board to highlight. */
+  lastMove: { from: string; to: string } | null;
   movesRemaining: number;
   /** The next seat to receive a turn loses it. Set by Skip. */
   pendingSkip: boolean;

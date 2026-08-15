@@ -164,6 +164,7 @@ export const get = query({
       opponentCardCount: seat === null ? 0 : state.hands[opponentOf(seat)].length,
       yourArmy: seat === null ? null : state.ownership[seat],
       turnSeat: state.turnSeat,
+      lastMove: state.lastMove ?? null,
       movesRemaining: state.movesRemaining,
       cardPlayedThisTurn: state.cardPlayedThisTurn,
       drewThisTurn: state.drewThisTurn,
